@@ -1,14 +1,17 @@
 //mod args;
 //mod chunk;
 mod chunk_type;
+mod chunk;
 //mod commands;
 //mod png
 
-use chunk_type::ChunkType;
-
-pub type Error = Box<dyn std::error::Error>;
-pub type Result<T> = std::result::Result<T, Error>;
+use chunk_type::{ChunkType};
+use chunk::Chunk;
+use pngsct::{Error, Result};
 
 fn main() -> Result<()> {
-    todo!();
+    let arr = [97; 4];
+    let inst = ChunkType::try_from(arr).unwrap();
+    print!("{}", inst);
+    Ok(())
 }
