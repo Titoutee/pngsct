@@ -4,14 +4,15 @@ mod chunk_type;
 mod chunk;
 //mod commands;
 //mod png
+mod utils;
 
 use chunk_type::{ChunkType};
 use chunk::Chunk;
-use pngsct::{Error, Result};
+use utils::{Error, Result};
 
 fn main() -> Result<()> {
     let arr = [97; 4];
     let inst = ChunkType::try_from(arr).unwrap();
-    print!("{}", inst);
+    println!("{}", true.to_string());
     Ok(())
 }

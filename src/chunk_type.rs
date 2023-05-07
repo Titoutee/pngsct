@@ -24,16 +24,17 @@ impl Display for ChunkTypeError {
 
 impl std::error::Error for ChunkTypeError {}
 
-/// The representation of a chunk type (conatining raw bytes of the chunk code)
+/// The representation of a chunk type (containing raw bytes of the chunk code)
 #[derive(PartialEq, Eq, Debug)]
 pub struct ChunkType {
     bytes: [u8; 4],
 }
 
 /// Ability to build a ChunkType instance from [u8; 4]
-impl From<[u8; 4]> for ChunkType {
-    fn from(value: [u8; 4]) -> Self {
-        Self { bytes: value }
+impl TryFrom<[u8; 4]> for ChunkType {
+    type Error = Error;
+    fn try_from(value: [u8; 4]) -> Result<Self, Self::Error> {
+        Ok(Self { bytes: value })
     }
 }
 
@@ -56,7 +57,7 @@ impl FromStr for ChunkType {
             return Err(Box::new(ChunkTypeError::InvalidChar));
         }
 
-        Ok(ChunkType::from(<[u8; 4]>::try_from(bytes_s).unwrap()))
+        Ok(ChunkType::try_from(<[u8; 4]>::try_from(bytes_s).unwrap())?)
     }
 }
 
@@ -68,7 +69,7 @@ impl Display for ChunkType {
 
 impl ChunkType {
     /// Internal raw bytes
-    fn bytes(&self) -> [u8; 4] {
+    pub fn bytes(&self) -> [u8; 4] {
         self.bytes
     }
 
@@ -110,11 +111,7 @@ mod tests {
     use std::convert::TryFrom;
     use std::str::FromStr;
 
-    #[ignore = "works"]
-    #[test]
-    fn test_bits() {
-        assert_eq!('A' as u8 & 0x20, 0x20);
-    }
+
     #[test]
     pub fn test_chunk_type_from_bytes() {
         let expected = [82, 117, 83, 116]; // 4 bytes array
