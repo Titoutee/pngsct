@@ -1,10 +1,7 @@
 use crate::chunk_type::ChunkType;
-use crate::utils::{next_chunk_to_vec, Error, Result};
+use crate::utils::{Result};
 use crc::Crc;
-use std::collections::LinkedList;
-use std::collections::btree_map::RangeMut;
 use std::fmt::Display;
-use std::io::Read;
 
 #[derive(Debug)]
 //Any error that can occur at chunk creation
@@ -24,6 +21,7 @@ impl Chunk {
     const CHUNK_TYPE_BYTES: usize = 4;
     const CRC_BYTES: usize = 4;
 
+    const TOTAL_BYTES: usize = Self::DATA_LEN_BYTES + Self::CHUNK_TYPE_BYTES + Self::CRC_BYTES;
     // Example of u8 slice for constructing a Chunk: [0, 0, 0, 1(length), 97, 97, 97, 97(c_t), ]
 
     fn new(chunk_type: ChunkType, data: Vec<u8>) -> Chunk {
@@ -40,9 +38,11 @@ impl Chunk {
     }
     fn crc(&self) -> u32 {
         let crc = crc::Crc::<u32>::new(&crc::CRC_32_ISO_HDLC);
-        crc.checksum(&self.as_bytes())
+        let mut c_type_bytes = self.chunk_type().bytes().to_vec();
+        let mut data_bytes: Vec<u8> = self.data().try_into().unwrap();
+        c_type_bytes.append(&mut data_bytes);
+        crc.checksum(&c_type_bytes)
     }
-
     fn data_as_string(&self) -> Result<String> {
         Ok(self.data().into_iter().map(|&num| num as char).collect())
     }
@@ -65,8 +65,8 @@ impl TryFrom<&[u8]> for Chunk {
     type Error = ChunkError;
 
     fn try_from(bytes: &[u8]) -> std::result::Result<Self, Self::Error> {
-        if bytes.len() < Self::DATA_LEN_BYTES {
-            // At least 4 bytes at first
+        if bytes.len() < Self::TOTAL_BYTES {
+            // Minimum length of a construct slice
             return Err(ChunkError::SliceSizeError);
         }
 
@@ -74,11 +74,6 @@ impl TryFrom<&[u8]> for Chunk {
         let (data_length, remaining) = bytes.split_at(Self::DATA_LEN_BYTES); // This consumes a certain amount of bytes of the total slice from the head
         let data_length =
             u32::from_be_bytes(data_length.try_into().unwrap() /*&[u8] -> [u8; 4]*/);
-
-        if remaining.len() < Self::CHUNK_TYPE_BYTES + data_length as usize + Self::CRC_BYTES {
-            // Full infos slice size required (now that we know the data bytes number)
-            return Err(ChunkError::SliceSizeError);
-        }
 
         // Chunk type
         let (c_type, remaining) = remaining.split_at(Self::CHUNK_TYPE_BYTES);
@@ -88,7 +83,7 @@ impl TryFrom<&[u8]> for Chunk {
         .unwrap();
 
         // Data
-        let (data, remaining) = remaining.split_at(data_length as usize);
+        let (data, remaining) = remaining.split_at(data_length as usize); // If length is zero this does nothing
         let data: Vec<u8> = data.try_into().unwrap(); // &[u8] -> Vec<u8>
 
         // CRC
