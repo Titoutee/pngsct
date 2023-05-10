@@ -2,12 +2,13 @@
 //mod chunk;
 mod chunk_type;
 mod chunk;
+mod png;
 //mod commands;
 //mod png
 mod utils;
 
 use chunk_type::{ChunkType};
-use chunk::Chunk;
+use png::Png;
 use utils::{Error, Result};
 
 fn main() -> Result<()> {

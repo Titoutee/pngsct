@@ -4,26 +4,6 @@ use std::{
     str::{self, from_utf8, FromStr},
 };
 
-// Any error occuring with the creation of a ChunkType
-#[derive(Debug)]
-pub enum ChunkTypeError {
-    // Invalid length (furnished length)
-    CodeLengthError(usize),
-    // Invalid char 
-    InvalidChar,
-}
-
-impl Display for ChunkTypeError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ChunkTypeError::CodeLengthError(len) => writeln!(f, "Invalid code length: {}", len),
-            ChunkTypeError::InvalidChar => writeln!(f, "Invalid character encountered!"),
-        }
-    }
-}
-
-impl std::error::Error for ChunkTypeError {}
-
 /// The representation of a chunk type (containing raw bytes of the chunk code)
 #[derive(PartialEq, Eq, Debug)]
 pub struct ChunkType {
@@ -46,18 +26,18 @@ impl FromStr for ChunkType {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         // Check for len
         let bytes_s = s.as_bytes();
-        if bytes_s.len() != 4 {
-            return Err(Box::new(ChunkTypeError::CodeLengthError(bytes_s.len())));
+        if bytes_s.len() != 4 { // Length has to be strictly 4 chars (or bytes)
+            return Err(Error::CodeLengthError(bytes_s.len()));
         }
 
         // Check for invalid chars
-        let mut chars = from_utf8(bytes_s).unwrap().chars();
-        let valid_chars = chars.all(|c| c.is_ascii_alphabetic());
+        let mut chars = from_utf8(bytes_s).unwrap().chars(); // Builds chars from the bytes (just for checks)
+        let valid_chars = chars.all(|c| c.is_ascii_alphabetic()); // Only ASCII alphabetic chars
         if !valid_chars {
-            return Err(Box::new(ChunkTypeError::InvalidChar));
+            return Err(Error::InvalidChar);
         }
 
-        Ok(ChunkType::try_from(<[u8; 4]>::try_from(bytes_s).unwrap())?)
+        Ok(ChunkType::try_from(<[u8; 4]>::try_from(bytes_s).unwrap())?) // Actual return is an array of bytes wrapped in ChunkType
     }
 }
 
@@ -73,34 +53,34 @@ impl ChunkType {
         self.bytes
     }
 
-    /// Chunk validity check (only ASCII alphabetic bytes and is_reserved_bit_valid)
-    fn is_valid(&self) -> bool {
-        let bytes = self.bytes(); // Avoid early dropping and temporary variable
-        let mut chars = from_utf8(&bytes).unwrap().chars();
+    /// Chunk validity check (only ASCII alphabetic bytes and is_reserved_bit_valid is true)
+    pub fn is_valid(&self) -> bool {
+        let bytes = self.bytes(); // Avoid early dropping
+        let mut chars = from_utf8(&bytes).unwrap().chars(); //For cchars checking
         let valid_chars = chars.all(|c| c.is_ascii_alphabetic());
-        valid_chars && self.is_reserved_bit_valid()
+        valid_chars && self.is_reserved_bit_valid() // Checked chars and reserved bit is valid
     }
 
     /// Is the chunk critical
-    fn is_critical(&self) -> bool {
+    pub fn is_critical(&self) -> bool {
         // First byte
         (self.bytes()[0] & 0x20/*32, which corresponds to hc-lc  bit on or off*/) == 0
     }
 
     /// Is the chunk public
-    fn is_public(&self) -> bool {
+    pub fn is_public(&self) -> bool {
         // Second bytes
         (self.bytes()[1] & 0x20) == 0 // Is uppercase
     }
 
     /// Is the resserved bit on
-    fn is_reserved_bit_valid(&self) -> bool {
+    pub fn is_reserved_bit_valid(&self) -> bool {
         // Third byte
         (self.bytes()[2] & 0x20) == 0 // Is uppercase
     }
 
     /// Is the chunk safe to copy
-    fn is_safe_to_copy(&self) -> bool {
+    pub fn is_safe_to_copy(&self) -> bool {
         // Fourth byte
         (self.bytes()[3] & 0x20) == 0x20 // Is lowercase
     }

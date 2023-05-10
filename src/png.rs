@@ -1,14 +1,100 @@
-use crate::{Chunk, ChunkType};
+use crate::utils::{checked_split_at, Error, Result as R};
+use crate::{chunk::Chunk, chunk_type::ChunkType};
+use std::fmt::Display;
+use std::str::{from_utf8, FromStr};
 
+pub struct Png {
+    header: [u8; 8],    // PNG signature
+    chunks: Vec<Chunk>, // Chunks representing the png structure
+}
 
+impl Png {
+    const STANDARD_HEADER: [u8; 8] = [137, 80, 78, 71, 13, 10, 26, 10]; // Standard header
 
+    ///From chunks (`Vec`) constructor
+    pub fn from_chunks(chunks: Vec<Chunk>) -> Png {
+        Self {
+            header: Self::STANDARD_HEADER,
+            chunks,
+        }
+    }
+    ///Adds a chunk to the internal chunk aggregate
+    pub fn append_chunk(&mut self, chunk: Chunk) {
+        self.chunks.push(chunk);
+    }
+    ///Remove a chunk of a precise type from the internal chunk aggregate
+    pub fn remove_chunk(&mut self, chunk_type: &str) -> R<Chunk> {
+        if self.chunk_by_type(chunk_type).is_none() {
+            return Err(Error::ChunkNotFound);
+        } // Have we got this type of Chunk in our chunks aggregate?
+
+        let mut index = 0;
+        for (i, chunk) in self.chunks().iter().enumerate() {
+            if chunk.chunk_type().to_string() == chunk_type {
+                index = i;
+            }
+        } // Cumbersome, but working
+        Ok(self.chunks.remove(index))
+    }
+    /// Png header
+    pub fn header(&self) -> &[u8; 8] {
+        &self.header
+    }
+    /// Internal chunk aggregate (slice)
+    pub fn chunks(&self) -> &[Chunk] {
+        &self.chunks
+    }
+    /// First occurence of a chunk of type `chunk_type`
+    pub fn chunk_by_type(&self, chunk_type: &str) -> Option<&Chunk> {
+        for chunk in &self.chunks {
+            if &chunk.chunk_type().to_string() == chunk_type {
+                // Choice here os to cast to a string and compare directly to the furnished string chunk code
+                return Some(chunk);
+            }
+        }
+        None // Not found
+    }
+    /// The whole png file as a `Vec` of bytes
+    fn as_bytes(&self) -> Vec<u8> {
+        let chunk_bytes = self.chunks().iter().map(|chunk| chunk.as_bytes()).flatten(); // All the bytes of all the chunks (the iterator of Vec<u8> gets flattened)
+        self.header.into_iter().chain(chunk_bytes).collect() // Chain the header and the chunk bytes, and collect
+    }
+}
+
+impl TryFrom<&[u8]> for Png {
+    type Error = Error;
+
+    fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
+        let mut chunks = Vec::new();
+
+        let (header, mut chunk_infos) =
+            checked_split_at(bytes, Self::STANDARD_HEADER.len()).ok_or(Error::PngSliceError)?; // Header getter
+        let header: [u8; 8] = header.try_into().unwrap(); // Convert header from slice to [u8; 8]
+
+        // While we can read a length (4B), which is only responsability of the present function
+        while let Some((length, _)) = checked_split_at(chunk_infos, Chunk::DATA_LEN_BYTES) {
+            // This ignores potential bytes surplus (if less than 4 bytes remain at the end of the chain)
+            // If length can be read then...
+            let length = u32::from_be_bytes(length.try_into().unwrap()); // Convert length from slice to 4B integer
+            let (chunk_bytes, chunk_infos) = checked_split_at(chunk_infos, Chunk::TOTAL_BYTES + length as usize).ok_or(Error::PngSliceError)?;
+            chunks.push(Chunk::try_from(chunk_bytes).unwrap());
+        }
+        //todo!();
+        Ok(Self { header, chunks })
+    }
+}
+
+impl Display for Png {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "{:?}, {:?}", self.header(), self.chunks()) // Debugs both header and chunks vector
+    }
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::chunk_type::ChunkType;
     use crate::chunk::Chunk;
-    use std::str::FromStr;
+    use crate::chunk_type::ChunkType;
     use std::convert::TryFrom;
 
     fn testing_chunks() -> Vec<Chunk> {
@@ -26,8 +112,8 @@ mod tests {
         Png::from_chunks(chunks)
     }
 
-    fn chunk_from_strings(chunk_type: &str, data: &str) -> Result<Chunk> {
-        use std::str::FromStr;
+    fn chunk_from_strings(chunk_type: &str, data: &str) -> R<Chunk> {
+        //use std::str::FromStr;
 
         let chunk_type = ChunkType::from_str(chunk_type)?;
         let data: Vec<u8> = data.bytes().collect();
@@ -101,7 +187,6 @@ mod tests {
         assert!(png.is_err());
     }
 
-
     #[test]
     fn test_list_chunks() {
         let png = testing_png();
@@ -115,7 +200,6 @@ mod tests {
         let chunk = png.chunk_by_type("FrSt").unwrap();
         assert_eq!(&chunk.chunk_type().to_string(), "FrSt");
         assert_eq!(&chunk.data_as_string().unwrap(), "I am the first chunk");
-
     }
 
     #[test]
