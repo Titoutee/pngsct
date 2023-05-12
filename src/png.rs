@@ -1,7 +1,7 @@
 use crate::utils::{checked_split_at, Error, Result as R};
-use crate::{chunk::Chunk, chunk_type::ChunkType};
+use crate::{chunk::Chunk};
 use std::fmt::Display;
-use std::str::{from_utf8, FromStr};
+use std::str::FromStr;
 
 pub struct Png {
     header: [u8; 8],    // PNG signature
@@ -67,20 +67,18 @@ impl TryFrom<&[u8]> for Png {
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
         let mut chunks = Vec::new();
 
-        let (header, mut chunk_infos) =
-            checked_split_at(bytes, Self::STANDARD_HEADER.len()).ok_or(Error::PngSliceError)?; // Header getter
-        let header: [u8; 8] = header.try_into().unwrap(); // Convert header from slice to [u8; 8]
+        let (header, mut chunk_infos) = checked_split_at(bytes, Self::STANDARD_HEADER.len()).ok_or(Error::PngSliceError)?;
+        let header = <&[u8] as TryInto<[u8; 8]>>::try_into(header).unwrap(); // This shouldn't panic
 
-        // While we can read a length (4B), which is only responsability of the present function
         while let Some((length, _)) = checked_split_at(chunk_infos, Chunk::DATA_LEN_BYTES) {
-            // This ignores potential bytes surplus (if less than 4 bytes remain at the end of the chain)
-            // If length can be read then...
-            let length = u32::from_be_bytes(length.try_into().unwrap()); // Convert length from slice to 4B integer
-            let (chunk_bytes, chunk_infos) = checked_split_at(chunk_infos, Chunk::TOTAL_BYTES + length as usize).ok_or(Error::PngSliceError)?;
-            chunks.push(Chunk::try_from(chunk_bytes).unwrap());
+            let length = u32::from_be_bytes(<&[u8] as TryInto<[u8; 4]>>::try_into(length).unwrap());
+
+            let (current_chunk_slice, new) = checked_split_at(chunk_infos, Chunk::TOTAL_BYTES + length as usize).ok_or(Error::PngSliceError)?;
+            chunk_infos = new; // Update the slice
+            chunks.push(Chunk::try_from(current_chunk_slice)?);
         }
-        //todo!();
-        Ok(Self { header, chunks })
+
+        Ok(Self {header, chunks})
     }
 }
 
@@ -107,6 +105,12 @@ mod tests {
         chunks
     }
 
+    #[test]
+    fn fail_test() {
+        let chunks: Vec<u8> = testing_chunks().iter().flat_map(|x| x.as_bytes()).collect();
+        let png: Png = TryFrom::try_from(chunks.as_slice()).unwrap();
+        
+    }
     fn testing_png() -> Png {
         let chunks = testing_chunks();
         Png::from_chunks(chunks)
