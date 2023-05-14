@@ -17,6 +17,7 @@ impl Chunk {
     pub const CHUNK_TYPE_BYTES: usize = 4; // Number of type bytes
     pub const CRC_BYTES: usize = 4; // Number of crc bytes
     // Data bytes number is omitted as infered by the actual number that `data_len` represents
+    
     /// Data len, type and CRC bytes
     pub const TOTAL_BYTES: usize = Self::DATA_LEN_BYTES + Self::CHUNK_TYPE_BYTES + Self::CRC_BYTES;
     // Example of u8 slice for constructing a Chunk: [0, 0, 0, 1(length), 97, 97, 97, 97(c_t), ]

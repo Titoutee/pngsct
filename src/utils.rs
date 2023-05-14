@@ -11,6 +11,7 @@ pub enum Error {
     CRC,           // Wrong CRC at creation (specified is not what the real is)
     //Png
     ChunkNotFound, // When searching for a specific chunk with the chunktype, found nothing
+    InvalidPngHeader //When header is not correct when building from byutes slice
 }
 
 /// Checked alternative of split_at()
@@ -20,4 +21,8 @@ pub fn checked_split_at<T>(slice: &[T], mid: usize) -> Option<(&[T], &[T])> {
     } else {
         None
     }
+}
+
+pub fn read<T>(slice: &[T], mid: usize) -> Option<&[T]> {
+    Some(checked_split_at(slice, mid)?.0)
 }

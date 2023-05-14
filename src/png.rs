@@ -3,6 +3,7 @@ use crate::{chunk::Chunk};
 use std::fmt::Display;
 use std::str::FromStr;
 
+
 pub struct Png {
     header: [u8; 8],    // PNG signature
     chunks: Vec<Chunk>, // Chunks representing the png structure
@@ -67,18 +68,21 @@ impl TryFrom<&[u8]> for Png {
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
         let mut chunks = Vec::new();
 
-        let (header, mut chunk_infos) = checked_split_at(bytes, Self::STANDARD_HEADER.len()).ok_or(Error::PngSliceError)?;
+        let (header, _) = checked_split_at(bytes, Self::STANDARD_HEADER.len()).ok_or(Error::PngSliceError)?;
         let header = <&[u8] as TryInto<[u8; 8]>>::try_into(header).unwrap(); // This shouldn't panic
-
-        while let Some((length, _)) = checked_split_at(chunk_infos, Chunk::DATA_LEN_BYTES) {
-            let length = u32::from_be_bytes(<&[u8] as TryInto<[u8; 4]>>::try_into(length).unwrap());
-
-            let (current_chunk_slice, new) = checked_split_at(chunk_infos, Chunk::TOTAL_BYTES + length as usize).ok_or(Error::PngSliceError)?;
-            chunk_infos = new; // Update the slice
-            chunks.push(Chunk::try_from(current_chunk_slice)?);
+        if !header.eq(&Self::STANDARD_HEADER) {
+            return Err(Error::InvalidPngHeader);
         }
-
-        Ok(Self {header, chunks})
+        
+        let mut cursor = 8; // Skip the header bytes, as already extracted
+        
+        while cursor < bytes.len() { // While we still have something to read
+            let length = u32::from_be_bytes(bytes[cursor..cursor+Chunk::DATA_LEN_BYTES].try_into().unwrap()) as usize + Chunk::TOTAL_BYTES;
+            let chunk = Chunk::try_from(&bytes[cursor..cursor+length])?;
+            cursor+= length;
+            chunks.push(chunk);
+        }
+        Ok(Self { header, chunks })
     }
 }
 
@@ -105,12 +109,6 @@ mod tests {
         chunks
     }
 
-    #[test]
-    fn fail_test() {
-        let chunks: Vec<u8> = testing_chunks().iter().flat_map(|x| x.as_bytes()).collect();
-        let png: Png = TryFrom::try_from(chunks.as_slice()).unwrap();
-        
-    }
     fn testing_png() -> Png {
         let chunks = testing_chunks();
         Png::from_chunks(chunks)
