@@ -11,7 +11,8 @@ pub enum Error {
     CRC,           // Wrong CRC at creation (specified is not what the real is)
     //Png
     ChunkNotFound, // When searching for a specific chunk with the chunktype, found nothing
-    InvalidPngHeader //When header is not correct when building from byutes slice
+    InvalidPngHeader, //When header is not correct when building from byutes slice
+    FileError,     // When IO operations fail
 }
 
 /// Checked alternative of split_at()

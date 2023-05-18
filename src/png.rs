@@ -1,8 +1,9 @@
+use crate::chunk::Chunk;
 use crate::utils::{checked_split_at, Error, Result as R};
-use crate::{chunk::Chunk};
 use std::fmt::Display;
+use std::fs::{read, File};
+use std::path::PathBuf;
 use std::str::FromStr;
-
 
 pub struct Png {
     header: [u8; 8],    // PNG signature
@@ -18,6 +19,10 @@ impl Png {
             header: Self::STANDARD_HEADER,
             chunks,
         }
+    }
+    pub fn from_file(path: PathBuf) -> R<Png> {
+        let content = read(path).map_err(|_|Error::FileError)?;
+        Png::try_from(content.as_slice())
     }
     ///Adds a chunk to the internal chunk aggregate
     pub fn append_chunk(&mut self, chunk: Chunk) {
@@ -68,18 +73,25 @@ impl TryFrom<&[u8]> for Png {
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
         let mut chunks = Vec::new();
 
-        let (header, _) = checked_split_at(bytes, Self::STANDARD_HEADER.len()).ok_or(Error::PngSliceError)?;
+        let (header, _) =
+            checked_split_at(bytes, Self::STANDARD_HEADER.len()).ok_or(Error::PngSliceError)?;
         let header = <&[u8] as TryInto<[u8; 8]>>::try_into(header).unwrap(); // This shouldn't panic
         if !header.eq(&Self::STANDARD_HEADER) {
             return Err(Error::InvalidPngHeader);
         }
-        
+
         let mut cursor = 8; // Skip the header bytes, as already extracted
-        
-        while cursor < bytes.len() { // While we still have something to read
-            let length = u32::from_be_bytes(bytes[cursor..cursor+Chunk::DATA_LEN_BYTES].try_into().unwrap()) as usize + Chunk::TOTAL_BYTES;
-            let chunk = Chunk::try_from(&bytes[cursor..cursor+length])?;
-            cursor+= length;
+
+        while cursor < bytes.len() {
+            // While we still have something to read
+            let length = u32::from_be_bytes(
+                bytes[cursor..cursor + Chunk::DATA_LEN_BYTES]
+                    .try_into()
+                    .unwrap(),
+            ) as usize
+                + Chunk::TOTAL_BYTES;
+            let chunk = Chunk::try_from(&bytes[cursor..cursor + length])?;
+            cursor += length;
             chunks.push(chunk);
         }
         Ok(Self { header, chunks })

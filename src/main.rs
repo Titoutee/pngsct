@@ -1,19 +1,23 @@
-//mod args;
-//mod chunk;
-mod chunk_type;
-mod chunk;
-mod png;
-//mod commands;
-//mod png
-mod utils;
 
-use chunk_type::{ChunkType};
-use png::Png;
+mod args;
+mod chunk;
+mod chunk_type;
+mod png;
+mod utils;
+mod commands;
+//use std::fs;
+//use png::Png;
+use structopt::StructOpt;
+//use chunk_type::{ChunkType};
+//use structopt::StructOpt;
 use utils::{Error, Result};
 
 fn main() -> Result<()> {
-    let arr = [97; 4];
-    let inst = ChunkType::try_from(arr).unwrap();
-    println!("{}", true.to_string());
+    match args::Args::from_args() {
+        args::Args::Encode(args) => println!("Encode!"),
+        args::Args::Decode(args) => println!("Decode!"),
+        args::Args::Remove(args) => println!("Remove!"),
+        args::Args::Print(args) => println!("Print!"),
+    }
     Ok(())
 }
