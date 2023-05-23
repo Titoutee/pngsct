@@ -2,6 +2,7 @@ use crate::chunk_type::ChunkType;
 use crate::utils::{Error, Result};
 use crc;
 use std::fmt::Display;
+use std::str::from_utf8;
 
 #[derive(Debug)]
 pub struct Chunk {
@@ -16,8 +17,8 @@ impl Chunk {
     pub const DATA_LEN_BYTES: usize = 4; // Number of len bytes
     pub const CHUNK_TYPE_BYTES: usize = 4; // Number of type bytes
     pub const CRC_BYTES: usize = 4; // Number of crc bytes
-    // Data bytes number is omitted as infered by the actual number that `data_len` represents
-    
+                                    // Data bytes number is omitted as infered by the actual number that `data_len` represents
+
     /// Data len, type and CRC bytes
     pub const TOTAL_BYTES: usize = Self::DATA_LEN_BYTES + Self::CHUNK_TYPE_BYTES + Self::CRC_BYTES;
     // Example of u8 slice for constructing a Chunk: [0, 0, 0, 1(length), 97, 97, 97, 97(c_t), ]
@@ -42,7 +43,7 @@ impl Chunk {
         crc.checksum(&c_type_bytes)
     }
     pub fn data_as_string(&self) -> Result<String> {
-        Ok(self.data().into_iter().map(|&num| num as char).collect())
+        Ok(from_utf8(self.data()).map_err(|_| Error::InvalidChar)?.to_string())
     }
     /// Chunk as a sequence of bytes (same infos order as for building from bytes)
     pub fn as_bytes(&self) -> Vec<u8> {
@@ -73,11 +74,14 @@ impl TryFrom<&[u8]> for Chunk {
 
         // Data length
         let (data_length, remaining) = bytes.split_at(Self::DATA_LEN_BYTES); // This consumes a certain amount of bytes of the total slice from the head
-        let data_length = u32::from_be_bytes(data_length.try_into().unwrap() /*&[u8] -> [u8; 4]*/);
-        
+        let data_length =
+            u32::from_be_bytes(data_length.try_into().unwrap() /*&[u8] -> [u8; 4]*/);
+
         // Second check (is data the actual correct size represented by `data_len`? if not slice is rejected)
-        if remaining.len() != Self::CHUNK_TYPE_BYTES + Self::CRC_BYTES + data_length as usize /*Data has already been consumed from the slice*/ {
-            return Err(Error::ChunkSliceSizeError)
+        if remaining.len() != Self::CHUNK_TYPE_BYTES + Self::CRC_BYTES + data_length as usize
+        /*Data has already been consumed from the slice*/
+        {
+            return Err(Error::ChunkSliceSizeError);
         }
 
         // Chunk type
@@ -111,10 +115,9 @@ impl Display for Chunk {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(
             f,
-            "{}, {}, {:?}, {}",
+            "{}, {}, [some lengthy data sequence], {}",
             self.length(),
             self.chunk_type(),
-            self.data(),
             self.crc()
         )
     }
@@ -155,7 +158,7 @@ mod tests {
     }
 
     #[test]
-    fn test_valid_length(){
+    fn test_valid_length() {
         let data_length: u32 = 42;
         let chunk_type = "RuSt".as_bytes();
         let message_bytes = "This is where your secret message will be!".as_bytes();

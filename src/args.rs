@@ -14,7 +14,7 @@ pub struct EncodeArgs {
     pub file_path: PathBuf,
     pub chunk_type: String,
     pub message: String,
-    pub output_file: Option<PathBuf> // Optional
+    pub output_file: Option<PathBuf> // Option-al
 }
 
 #[derive(Debug, StructOpt)]

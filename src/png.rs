@@ -61,7 +61,7 @@ impl Png {
         None // Not found
     }
     /// The whole png file as a `Vec` of bytes
-    fn as_bytes(&self) -> Vec<u8> {
+    pub fn as_bytes(&self) -> Vec<u8> {
         let chunk_bytes = self.chunks().iter().map(|chunk| chunk.as_bytes()).flatten(); // All the bytes of all the chunks (the iterator of Vec<u8> gets flattened)
         self.header.into_iter().chain(chunk_bytes).collect() // Chain the header and the chunk bytes, and collect
     }
@@ -100,7 +100,11 @@ impl TryFrom<&[u8]> for Png {
 
 impl Display for Png {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "{:?}, {:?}", self.header(), self.chunks()) // Debugs both header and chunks vector
+        writeln!(f, "{:?}", self.header())?;
+        for chunk in self.chunks() {
+            writeln!(f, "Chunk: {}", chunk)?;
+        }
+        Ok(())
     }
 }
 
