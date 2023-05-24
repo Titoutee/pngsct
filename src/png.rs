@@ -1,7 +1,7 @@
 use crate::chunk::Chunk;
 use crate::utils::{checked_split_at, Error, Result as R};
 use std::fmt::Display;
-use std::fs::{read, File};
+use std::fs::{read};
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -13,6 +13,7 @@ pub struct Png {
 impl Png {
     const STANDARD_HEADER: [u8; 8] = [137, 80, 78, 71, 13, 10, 26, 10]; // Standard header
 
+    #[allow(unused)]
     ///From chunks (`Vec`) constructor
     pub fn from_chunks(chunks: Vec<Chunk>) -> Png {
         Self {
@@ -31,7 +32,7 @@ impl Png {
     ///Remove a chunk of a precise type from the internal chunk aggregate
     pub fn remove_chunk(&mut self, chunk_type: &str) -> R<Chunk> {
         if self.chunk_by_type(chunk_type).is_none() {
-            return Err(Error::ChunkNotFound);
+            return Err(Error::ChunkNotFound(chunk_type.to_string()));
         } // Have we got this type of Chunk in our chunks aggregate?
 
         let mut index = 0;
@@ -100,9 +101,9 @@ impl TryFrom<&[u8]> for Png {
 
 impl Display for Png {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "{:?}", self.header())?;
-        for chunk in self.chunks() {
-            writeln!(f, "Chunk: {}", chunk)?;
+        writeln!(f, "Header: {:?}", self.header())?;
+        for (c, chunk) in self.chunks().iter().enumerate() {
+            writeln!(f, "Chunk {c}: {chunk}")?;
         }
         Ok(())
     }

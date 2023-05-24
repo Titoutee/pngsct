@@ -29,7 +29,8 @@ pub fn encode(args: EncodeArgs) -> R<()> {
 
 pub fn decode(args: DecodeArgs) -> R<()> {
     let png = Png::try_from(contents(args.file_path)?.as_slice())?;
-    let r_chunk = png.chunk_by_type(args.chunk_type.as_str()).ok_or(Error::ChunkNotFound)?;
+    let c_type = args.chunk_type;
+    let r_chunk = png.chunk_by_type(c_type.as_ref()).ok_or(Error::ChunkNotFound(c_type.to_string()))?;
     let conv = r_chunk.data_as_string();
     match conv {
         Ok(message) => {

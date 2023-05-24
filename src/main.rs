@@ -17,8 +17,8 @@ fn main() -> Result<(), ()> {
         args::Args::Remove(args) => remove(args),
         args::Args::Print(args) => print(args),
     };
-    if res.is_err() {
-        println!("{:#?}", res);
+    if let Err(my_error) = res {
+        println!("{my_error}");
     }
     Ok(())
 }

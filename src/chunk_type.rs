@@ -13,8 +13,13 @@ pub struct ChunkType {
 /// Ability to build a ChunkType instance from [u8; 4]
 impl TryFrom<[u8; 4]> for ChunkType {
     type Error = Error;
-    fn try_from(value: [u8; 4]) -> Result<Self, Self::Error> {
-        Ok(Self { bytes: value })
+    fn try_from(bytes: [u8; 4]) -> Result<Self, Self::Error> {
+        let a = Self {bytes};
+        if a.is_valid() {
+            Ok(a)
+        } else {
+            Err(Error::InvalidType)
+        }
     }
 }
 
