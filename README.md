@@ -3,8 +3,12 @@ Heya, my implementation of the pngme project (https://picklenerd.github.io/pngme
 Type  `cargo run X --help` for more details about each of the main following commands the tool proposes:
 
 -`encode`
+
 -`decode`
+
 -`print`
+
 -`remove`
+
 
 Have fun with PNGs!
