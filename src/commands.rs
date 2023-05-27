@@ -16,7 +16,7 @@ pub fn encode(args: EncodeArgs) -> R<()> {
 
     let message = args.message;
     let chunk = Chunk::new(ChunkType::from_str(&args.chunk_type)?,message.as_bytes().to_vec());
-    png.append_chunk(chunk);
+    png.append_chunk(chunk); // Encoding invisible messages really means putting the chunk after IEND 
     let new_contents = png.as_bytes();
     let save_path = if let Some(path) = args.output_file {
         path
