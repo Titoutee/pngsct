@@ -11,13 +11,14 @@ use std::str::FromStr;
 
 /// Encoding command
 pub fn encode(args: EncodeArgs) -> R<()> {
-    let contents = contents(args.file_path.clone())?; // Png as bytes
+    let contents = contents(&args.file_path)?; // Png as bytes
     let mut png = Png::try_from(contents.as_slice())?; // New png with exact same definition as opened one
 
     let message = args.message;
     let chunk = Chunk::new(ChunkType::from_str(&args.chunk_type)?,message.as_bytes().to_vec());
     png.append_chunk(chunk); // Encoding invisible messages really means putting the chunk after IEND 
     let new_contents = png.as_bytes();
+    
     let save_path = if let Some(path) = args.output_file {
         path
     } else {
@@ -28,7 +29,7 @@ pub fn encode(args: EncodeArgs) -> R<()> {
 }
 
 pub fn decode(args: DecodeArgs) -> R<()> {
-    let png = Png::try_from(contents(args.file_path)?.as_slice())?;
+    let png = Png::try_from(contents(&args.file_path)?.as_slice())?;
     let c_type = args.chunk_type;
     let r_chunk = png.chunk_by_type(c_type.as_ref()).ok_or(Error::ChunkNotFound(c_type.to_string()))?;
     let conv = r_chunk.data_as_string();
@@ -48,7 +49,7 @@ pub fn print(args: PrintArgs) -> R<()> {
 }
 
 pub fn remove(args: RemoveArgs) -> R<()> {
-    let contents = contents(args.file_path.clone())?; // Remove clone call
+    let contents = contents(&args.file_path)?;
     let mut png = Png::try_from(contents.as_slice())?;
     png.remove_chunk(&args.chunk_type)?;
     let new_contents = png.as_bytes();
@@ -57,6 +58,6 @@ pub fn remove(args: RemoveArgs) -> R<()> {
     Ok(())
 }
 
-pub fn contents(path: PathBuf) -> R<Vec<u8>> {
+pub fn contents(path: &PathBuf) -> R<Vec<u8>> {
     fs::read(path).map_err(|_| Error::FileError)
 }
