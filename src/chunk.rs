@@ -7,8 +7,8 @@ use std::str::from_utf8;
 #[derive(Debug)]
 pub struct Chunk {
     chunk_type: ChunkType, // Type of a chunk (4-bytes code)
-    data: Vec<u8>,         //Data bytes
-                           // Length and CRC don't have to be part of the type, and are exterior data which can be inferred
+    data: Vec<u8>,         // Data bytes
+                           // Length and CRC don't have to be part of the type, and are exterior data which can be computed
                            // This lightens the type definition
 }
 
@@ -157,6 +157,7 @@ mod tests {
         assert_eq!(chunk.crc(), 2882656334);
     }
 
+    #[allow(unused)]
     #[test]
     fn test_valid_length() {
         let data_length: u32 = 42;

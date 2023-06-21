@@ -1,14 +1,13 @@
-
 mod args;
 mod chunk;
 mod chunk_type;
+mod commands;
 mod png;
 mod utils;
-mod commands;
 
+use commands::{decode, encode, print, remove};
 use structopt::StructOpt;
-use utils::{Error};
-use commands::{encode, print, remove, decode};
+use utils::Error;
 
 fn main() -> Result<(), ()> {
     let res = match args::Args::from_args() {

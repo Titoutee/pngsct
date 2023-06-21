@@ -3,8 +3,8 @@ use crate::utils::{checked_split_at, Error, Result as R};
 use std::fmt::Display;
 use std::fs::{read};
 use std::path::PathBuf;
+#[allow(unused)]
 use std::str::FromStr;
-
 pub struct Png {
     header: [u8; 8],    // PNG signature
     chunks: Vec<Chunk>, // Chunks representing the png structure
